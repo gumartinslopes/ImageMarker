@@ -6,7 +6,7 @@ class InitialFrame(ctk.CTkFrame):
         self._select_image_btn = ctk.CTkButton(
             master = self, 
             text = "Load Image",
-            command=parent.open_img
+            command=parent._load_image_frame
         )
 
         self._select_image_btn.place(relx=0.5, rely=0.5, anchor="center")

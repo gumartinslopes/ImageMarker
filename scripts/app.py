@@ -3,7 +3,7 @@ from tkinter import messagebox
 from .utils.file_manager import read_file_path
 from .frames.initial_frame import InitialFrame
 from .frames.image_frame import ImageFrame
-
+from .utils.file_manager import open_image
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -36,18 +36,11 @@ class App(ctk.CTk):
         self._current_frame = self._initial_frame
         self._initial_frame.pack(fill=ctk.BOTH, expand=True)
 
-    def _load_image_frame(self, image_path):
-        self._clear_frame()
-        self._image_frame = ImageFrame(parent = self, image_path=image_path)
-        self._current_frame = self._image_frame
-        self._image_frame.pack(fill=ctk.BOTH, expand=True)
-
-    def open_img(self):
-        current_filepath = read_file_path()
-        if current_filepath != "":
-            self._load_image_frame(current_filepath)
-        else:
-            messagebox.showwarning(title = "Opening Error", message = "No file selected!")
-
-# app = App()
-# app.mainloop()
+    def _load_image_frame(self):
+        filepath = read_file_path()
+        image = open_image(filepath)
+        if image is not None:
+            self._clear_frame()
+            self._image_frame = ImageFrame(parent = self, image=image)
+            self._current_frame = self._image_frame
+            self._image_frame.pack(fill=ctk.BOTH, expand=True)

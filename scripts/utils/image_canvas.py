@@ -1,14 +1,15 @@
-import tkinter as tk
 import customtkinter as ctk
 from PIL import Image, ImageTk, ImageDraw
 from .constants import OBJECT_COLOR, BACKGROUND_COLOR, UNCERTAIN_COLOR
 from .marker import *
+from .file_manager import save_results, load_annotation_from_file
 
 class ImageCanvas(ctk.CTkFrame):
-    def __init__(self, master, image_path, **kwargs):
+    def __init__(self, master, original_image, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
-        self.image_path = image_path
+        self._original_image = original_image
+        self._image_size = original_image.size
 
         # Zoom and translation control variables
         self._zoom_factor = 1
@@ -18,10 +19,12 @@ class ImageCanvas(ctk.CTkFrame):
         self._last_y = 0
 
         # Marker setup
-        self._marker_list = []
+        self._obj_marker_list = []
+        self._bg_marker_list = []
+        self._uncer_marker_list = []
         self._marker_size = 5
         self.set_obj_marker()
-        self.erase_size = 20
+        self.remove_size = 20
 
         # Frame setup
         self._config_grid()
@@ -35,8 +38,6 @@ class ImageCanvas(ctk.CTkFrame):
     def _config_canvas(self):
         self._canvas = ctk.CTkCanvas(self, bg="black")
         self._canvas.grid(row = 0, column = 0, sticky="nsew", columnspan=2)
-        self.image_path = self.image_path
-        self._original_image = Image.open(self.image_path)
         self._painting_image = self._original_image.copy()
         self._displayed_image = ImageTk.PhotoImage(self._painting_image)
 
@@ -51,20 +52,37 @@ class ImageCanvas(ctk.CTkFrame):
     
     def _print_list(self):
         print('[')
-        for i in range(0, len(self._marker_list) - 1):
-            print(self._marker_list[i], end = ', ')
-        print(self._marker_list[-1], end = ']')
+        for i in range(0, len(self._obj_marker_list) - 1):
+            print(self._obj_marker_list[i], end = ', ')
+        print(self._obj_marker_list[-1], end = ']')
+        
+        for i in range(0, len(self._bg_marker_list) - 1):
+            print(self._bg_marker_list[i], end = ', ')
+        print(self._bg_marker_list[-1], end = ']')
+        
+        for i in range(0, len(self._uncer_marker_list) - 1):
+            print(self._uncer_marker_list[i], end = ', ')
+        print(self._uncer_marker_list[-1], end = ']')
+
         print("\n\n")
     
     def save(self):
-        self._original_image.save('./Original.jpg')
-        self._painting_image.save('./Painted.jpg')
+        save_results(
+        self._original_image, self._painting_image, self._obj_marker_list, self._bg_marker_list, self._uncer_marker_list)
+    
+    def load_annotation(self):
+        obj_markers, bg_markers, uncer_markers = load_annotation_from_file()
+        if obj_markers is not None and bg_markers is not None and uncer_markers is not None:
+            self._obj_marker_list = obj_markers
+            self._bg_marker_list = bg_markers
+            self._uncer_marker_list = uncer_markers
+            self._update_image()
 
     def _left_mouse_click(self, event):
         if self._erasing == False:
             self._mark(event)
         else:
-            self._erase_marker(event)
+            self._remove_marker(event)
 
     # Drawing event
     def _mark(self, event):
@@ -72,7 +90,12 @@ class ImageCanvas(ctk.CTkFrame):
         y = int(event.y / self._zoom_factor) - self._translation_y / self._zoom_factor
         self._last_x = x
         self._last_y = y
-        self._marker_list.append(Marker(x, y, self._current_marker_type))
+        if self._current_marker_type == MarkerType.OBJECT:
+            self._obj_marker_list.append(Marker(x, y, self._current_marker_type))
+        elif self._current_marker_type == MarkerType.BACKGROUND:
+            self._bg_marker_list.append(Marker(x, y, self._current_marker_type))
+        else:    
+            self._uncer_marker_list.append(Marker(x, y, self._current_marker_type))
         self._update_image()
     
     def _place_marker(self,marker):
@@ -88,33 +111,50 @@ class ImageCanvas(ctk.CTkFrame):
         else:
             return False
             
-    def _erase_marker(self, event):
+    def _remove_marker(self, event):
         click_x = int(event.x / self._zoom_factor) - self._translation_x / self._zoom_factor
         click_y = int(event.y / self._zoom_factor) - self._translation_y / self._zoom_factor
-        for marker in self._marker_list:
+        for obj_marker in self._obj_marker_list:
             collision = self.check_collision(
-                [marker.x, marker.y,marker.x + self._marker_size, marker.y + self._marker_size],
-                [click_x, click_y,click_x + self.erase_size, click_y + self.erase_size ]
+                [obj_marker.x, obj_marker.y,obj_marker.x + self._marker_size, obj_marker.y + self._marker_size],
+                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
             )
 
             if collision:
-                self._marker_list.remove(marker)
+                self._obj_marker_list.remove(obj_marker)
         
-        #self._marker_list = []
+        for bg_marker in self._bg_marker_list:
+            collision = self.check_collision(
+                [bg_marker.x, bg_marker.y,bg_marker.x + self._marker_size, bg_marker.y + self._marker_size],
+                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
+            )
+
+            if collision:
+                self._bg_marker_list.remove(bg_marker)
+
+        for uncer_marker in self._uncer_marker_list:
+            collision = self.check_collision(
+                [uncer_marker.x, uncer_marker.y,uncer_marker.x + self._marker_size, uncer_marker.y + self._marker_size],
+                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
+            )
+
+            if collision:
+                self._uncer_marker_list.remove(uncer_marker)
+        
+        
         self._update_image()
     
     def set_obj_marker(self):
         self._current_marker_type = MarkerType.OBJECT
         self._marker_color = OBJECT_COLOR
         self._erasing = False
-
     
     def set_bg_marker(self):
         self._current_marker_type = MarkerType.BACKGROUND
         self._marker_color = BACKGROUND_COLOR
         self._erasing = False
     
-    def set_erase(self):
+    def set_remove(self):
         self._erasing = True
     
     def set_uncertain_marker(self):
@@ -130,20 +170,28 @@ class ImageCanvas(ctk.CTkFrame):
             self._zoom_out()
             
     def _zoom_in(self):
-        self._zoom_factor *= 1.5
-        self._update_image()
+        if self._zoom_factor < 1.5:
+            self._zoom_factor *= 1.5
+            self._update_image()
 
     def _zoom_out(self):
-        self._zoom_factor /= 1.5
-        self._update_image()
+        if self._zoom_factor > 0.2:
+            self._zoom_factor /= 1.5
+            self._update_image()
     
     def _update_image(self):
         self._painting_image = self._original_image.copy()
-        for marker in self._marker_list:
-            self._place_marker(marker)
+        for obj_marker in self._obj_marker_list:
+            self._place_marker(obj_marker)
+        for bg_marker in self._bg_marker_list:
+            self._place_marker(bg_marker)
+        for uncer_marker in self._uncer_marker_list:
+            self._place_marker(uncer_marker)
+        
         zoomed_width = int(self._painting_image.width * self._zoom_factor)
         zoomed_height = int(self._painting_image.height * self._zoom_factor)
         zoomed_image = self._painting_image.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        self._image_size = zoomed_image.size
         self._displayed_image = ImageTk.PhotoImage(zoomed_image)
         self._canvas.itemconfig(self.image_item, image=self._displayed_image)
     
@@ -162,4 +210,5 @@ class ImageCanvas(ctk.CTkFrame):
     def _translate_image(self, dx, dy):
         self._translation_x += dx
         self._translation_y += dy
+        print(self._canvas.coords(self.image_item))
         self._canvas.move(self.image_item, dx, dy)
