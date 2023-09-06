@@ -210,5 +210,4 @@ class ImageCanvas(ctk.CTkFrame):
     def _translate_image(self, dx, dy):
         self._translation_x += dx
         self._translation_y += dy
-        print(self._canvas.coords(self.image_item))
         self._canvas.move(self.image_item, dx, dy)
