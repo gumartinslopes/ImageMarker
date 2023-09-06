@@ -43,10 +43,13 @@ class ImageCanvas(ctk.CTkFrame):
 
 
         self.image_item = self._canvas.create_image(0, 0, anchor=ctk.NW, image=self._displayed_image)
-    
+      
     def _config_bindings(self):
         self._canvas.bind("<Button-1>", self._left_mouse_click)
         self._canvas.bind("<MouseWheel>", self._mouse_wheel)
+        self._canvas.bind("<Button-4>", self._scroll)     # Para o Linux (scroll para cima)
+        self._canvas.bind("<Button-5>", self._scroll)     # Para o Linux (scroll para baixo)
+        
         self._canvas.bind("<ButtonPress-3>", self._start_translation)
         self._canvas.bind("<B3-Motion>", self._right_mouse_click)
     
@@ -162,7 +165,14 @@ class ImageCanvas(ctk.CTkFrame):
         self._marker_color = UNCERTAIN_COLOR
         self._erasing = False
 
-    # Zoom event
+    # Zoom event on Linux
+    def _scroll(self, event):
+      if event.num == 4 or event.delta == 120:  # Scroll para cima
+        self._zoom_in()
+      elif event.num == 5 or event.delta == -120:  # Scroll para baixo
+        self._zoom_out()
+
+    # Zoom event on Windows
     def _mouse_wheel(self, event):
         if (event.delta > 0):
             self._zoom_in()
