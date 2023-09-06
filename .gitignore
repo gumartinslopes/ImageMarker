@@ -2,3 +2,4 @@ __pycache__
 /CellsDataset
 /tkinter_course
 /save_test
+*.test.py
