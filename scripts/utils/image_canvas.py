@@ -2,7 +2,7 @@ import customtkinter as ctk
 from PIL import Image, ImageTk, ImageDraw
 from .constants import OBJECT_COLOR, BACKGROUND_COLOR, UNCERTAIN_COLOR
 from .marker import *
-from .file_manager import save_results, load_annotation_from_file
+from . import file_manager
 
 class ImageCanvas(ctk.CTkFrame):
     def __init__(self, master, original_image, **kwargs):
@@ -22,9 +22,8 @@ class ImageCanvas(ctk.CTkFrame):
         self._obj_marker_list = []
         self._bg_marker_list = []
         self._uncer_marker_list = []
-        self._marker_size = 5
+        self._brush_size = 5
         self.set_obj_marker()
-        self.remove_size = 20
 
         # Frame setup
         self._config_grid()
@@ -40,7 +39,6 @@ class ImageCanvas(ctk.CTkFrame):
         self._canvas.grid(row = 0, column = 0, sticky="nsew", columnspan=2)
         self._painting_image = self._original_image.copy()
         self._displayed_image = ImageTk.PhotoImage(self._painting_image)
-
 
         self.image_item = self._canvas.create_image(0, 0, anchor=ctk.NW, image=self._displayed_image)
       
@@ -70,11 +68,11 @@ class ImageCanvas(ctk.CTkFrame):
         print("\n\n")
     
     def save(self):
-        save_results(
+        file_manager.save_results(
         self._original_image, self._painting_image, self._obj_marker_list, self._bg_marker_list, self._uncer_marker_list)
     
     def load_annotation(self):
-        obj_markers, bg_markers, uncer_markers = load_annotation_from_file()
+        obj_markers, bg_markers, uncer_markers = file_manager.load_annotation_from_file()
         if obj_markers is not None and bg_markers is not None and uncer_markers is not None:
             self._obj_marker_list = obj_markers
             self._bg_marker_list = bg_markers
@@ -94,17 +92,17 @@ class ImageCanvas(ctk.CTkFrame):
         self._last_x = x
         self._last_y = y
         if self._current_marker_type == MarkerType.OBJECT:
-            self._obj_marker_list.append(Marker(x, y, self._current_marker_type))
+            self._obj_marker_list.append(Marker(int(x),int(y), self._current_marker_type, self._brush_size))
         elif self._current_marker_type == MarkerType.BACKGROUND:
-            self._bg_marker_list.append(Marker(x, y, self._current_marker_type))
+            self._bg_marker_list.append(Marker(int(x),int(y), self._current_marker_type, self._brush_size))
         else:    
-            self._uncer_marker_list.append(Marker(x, y, self._current_marker_type))
+            self._uncer_marker_list.append(Marker(int(x), int(y), self._current_marker_type, self._brush_size))
         self._update_image()
     
     def _place_marker(self,marker):
         paint = ImageDraw.Draw(self._painting_image)
-        paint.rectangle((marker.x, marker.y, marker.x + self._marker_size , marker.y +self._marker_size), fill=marker.color, width=2)
-    
+        paint.rectangle((marker.x, marker.y, marker.x + marker.size , marker.y + marker.size), fill=marker.color, width=2)
+
     def check_collision(self, coords_1, coords_2):
         x_min_1, y_min_1, x_max_1, y_max_1 = coords_1
         x_min_2, y_min_2, x_max_2, y_max_2 = coords_2
@@ -119,8 +117,8 @@ class ImageCanvas(ctk.CTkFrame):
         click_y = int(event.y / self._zoom_factor) - self._translation_y / self._zoom_factor
         for obj_marker in self._obj_marker_list:
             collision = self.check_collision(
-                [obj_marker.x, obj_marker.y,obj_marker.x + self._marker_size, obj_marker.y + self._marker_size],
-                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
+                [obj_marker.x, obj_marker.y,obj_marker.x + obj_marker.size, obj_marker.y + obj_marker.size],
+                [click_x, click_y,click_x + self._brush_size, click_y + self._brush_size]
             )
 
             if collision:
@@ -128,8 +126,8 @@ class ImageCanvas(ctk.CTkFrame):
         
         for bg_marker in self._bg_marker_list:
             collision = self.check_collision(
-                [bg_marker.x, bg_marker.y,bg_marker.x + self._marker_size, bg_marker.y + self._marker_size],
-                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
+                [bg_marker.x, bg_marker.y,bg_marker.x + bg_marker.size, bg_marker.y + bg_marker.size],
+                [click_x, click_y,click_x + self._brush_size, click_y + self._brush_size ]
             )
 
             if collision:
@@ -137,8 +135,8 @@ class ImageCanvas(ctk.CTkFrame):
 
         for uncer_marker in self._uncer_marker_list:
             collision = self.check_collision(
-                [uncer_marker.x, uncer_marker.y,uncer_marker.x + self._marker_size, uncer_marker.y + self._marker_size],
-                [click_x, click_y,click_x + self.remove_size, click_y + self.remove_size ]
+                [uncer_marker.x, uncer_marker.y,uncer_marker.x + uncer_marker.size, uncer_marker.y + uncer_marker.size],
+                [click_x, click_y,click_x + self._brush_size, click_y + self._brush_size ]
             )
 
             if collision:
@@ -164,7 +162,10 @@ class ImageCanvas(ctk.CTkFrame):
         self._current_marker_type = MarkerType.UNCERTAIN
         self._marker_color = UNCERTAIN_COLOR
         self._erasing = False
-
+    
+    def _set_brush_size(self, size):
+        self._brush_size = size
+    
     # Zoom event on Linux
     def _scroll(self, event):
       if event.num == 4 or event.delta == 120:  # Scroll para cima

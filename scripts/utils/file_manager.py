@@ -17,7 +17,7 @@ def read_file_path():
 def save_annotation(file_obj, marker_list, type_name):
     file_obj.write(type_name + '\n')
     for marker in marker_list:
-            file_obj.write(f'{marker.x},{marker.y}\n')
+            file_obj.write(f'{marker.x},{marker.y},{marker.size}\n')
 
 def save_annotation_files(filepath, obj_markers, bg_markers, uncer_markers):
     # saves all annotation
@@ -37,6 +37,10 @@ def save_annotation_files(filepath, obj_markers, bg_markers, uncer_markers):
     with open(filepath + "_obj_uncer_annotation.txt", "w") as ob_uncer_file:
         save_annotation(ob_uncer_file, obj_markers, "obj")
         save_annotation(ob_uncer_file, uncer_markers, "uncer")
+    
+    # saves only uncertain annotation
+    with open(filepath + "_uncer_annotation.txt", "w") as uncer_file:
+        save_annotation(uncer_file, uncer_markers, "uncer")
 
 def load_annotation_from_file():
     filepath = read_file_path()
@@ -57,8 +61,8 @@ def load_annotation_from_file():
             elif curr_line == "uncer":
                 type_index = 2
             else:
-                coords = curr_line.split(',')
-                all_markers[type_index].append(Marker(float(coords[0]),float(coords[1]), types[type_index]))
+                marker_infos = curr_line.split(',')
+                all_markers[type_index].append(Marker(float(marker_infos[0]),float(marker_infos[1]), types[type_index], int(marker_infos[2])))
         return obj_markers, bg_markers, uncer_markers
     except Exception as e:
         messagebox.showerror("Annotation opening error", "An error ocurred while opening the annotation. Please, try again.")
@@ -66,8 +70,11 @@ def load_annotation_from_file():
 
 def save_results(original_img, painted_img, obj_markers, bg_markers, uncer_markers):
     save_filepath = filedialog.asksaveasfilename()
-    name_split = save_filepath.rsplit('.', 1) 
-    no_ext_filepath = name_split[0]
-    original_img.save(no_ext_filepath + "_original.jpg")
-    painted_img.save(no_ext_filepath + "_marked.jpg")
-    save_annotation_files(no_ext_filepath, obj_markers, bg_markers, uncer_markers)
+    if save_filepath != "":
+        name_split = save_filepath.rsplit('.', 1) 
+        no_ext_filepath = name_split[0]
+        original_img.save(no_ext_filepath + "_original.jpg")
+        painted_img.save(no_ext_filepath + "_marked.jpg")
+        save_annotation_files(no_ext_filepath, obj_markers, bg_markers, uncer_markers)
+    else:
+        messagebox.showerror("Result saving error", "The file name can't be empty")
