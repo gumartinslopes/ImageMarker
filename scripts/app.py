@@ -12,7 +12,16 @@ class App(ctk.CTk):
         self._config_window(width = 1200,height = 600)
         self._current_frame = None
         self._load_initial_frame()
+        self.__project_name = ''
 
+    @property
+    def project_name(self):
+        return self.__project_name
+    
+    @project_name.setter
+    def set_project_name(self, new_name):
+        self.__project_name = new_name
+        
     def _config_window(self, width, height):
         self.width = width
         self.height = height
