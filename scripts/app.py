@@ -4,6 +4,7 @@ from .utils.file_manager import read_file_path
 from .frames.initial_frame import InitialFrame
 from .frames.image_frame import ImageFrame
 from .utils.file_manager import open_image
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()

@@ -7,7 +7,7 @@ class MarkerType(Enum):
     BACKGROUND = BACKGROUND_COLOR
 
 class Marker():
-    def __init__(self, x, y, type, size = 5):
+    def __init__(self, x, y, type, size = 5.0):
         self.x = x
         self.y = y
         self.type = type
